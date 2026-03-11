@@ -1,7 +1,6 @@
 import os
 import httpx
 from fastmcp import FastMCP
-import uvicorn
 
 # Initialize FastMCP server
 mcp = FastMCP("clay-olostep-mcp")
@@ -31,10 +30,7 @@ def olostep_scrape_page(url_to_scrape: str) -> dict:
         "text": data.get("text_content") or data.get("text") or str(data),
     }
 
-# This creates the FastAPI app with the proper MCP SSE endpoints built-in
-app = mcp.create_app()
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
-
+    # Native way to run FastMCP as an SSE HTTP server
+    mcp.run(transport="sse", host="0.0.0.0", port=port)
