@@ -1,16 +1,12 @@
-# server.py
 import os
 import httpx
 from fastmcp import FastMCP
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 import uvicorn
 
-# ----- MCP tool definition (same logic you already had) -----
-
+# Initialize FastMCP server
 mcp = FastMCP("clay-olostep-mcp")
 
-OLOSTEP_API_KEY = os.environ["OLOSTEP_API_KEY"]
+OLOSTEP_API_KEY = os.environ.get("OLOSTEP_API_KEY", "")
 
 @mcp.tool
 def olostep_scrape_page(url_to_scrape: str) -> dict:
@@ -31,30 +27,14 @@ def olostep_scrape_page(url_to_scrape: str) -> dict:
 
     return {
         "url": url_to_scrape,
-        "markdown": data.get("markdown"),
-        "text": data.get("text"),
+        "markdown": data.get("markdown_content") or data.get("markdown"),
+        "text": data.get("text_content") or data.get("text") or str(data),
     }
 
-# ----- FastAPI HTTP wrapper so Railway has something to talk to -----
-
-app = FastAPI(title="Olostep MCP HTTP Bridge")
-
-@app.get("/")
-async def health():
-    return {"status": "ok"}
-
-@app.post("/tools/olostep_scrape_page")
-async def http_scrape(payload: dict):
-    url = payload.get("url_to_scrape") or payload.get("url")
-    if not url:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "url_to_scrape is required"},
-        )
-    result = olostep_scrape_page(url)
-    return result
+# This creates the FastAPI app with the proper MCP SSE endpoints built-in
+app = mcp.create_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
-    # IMPORTANT for Railway
     uvicorn.run("server:app", host="0.0.0.0", port=port)
+
